@@ -256,159 +256,153 @@ export class ScreenCapture {
     onCapture: (result: CaptureResult) => void,
     options: CaptureOptions
   ): Promise<void> {
-    console.log('Starting continuous capture for Electron...');
-    
-    // Check platform using electronAPI
-    const platform = window.electronAPI?.process?.platform || '';
-    console.log('Detected platform:', platform);
-    
-    // Check permissions on macOS
-    if (platform === 'darwin') {
-      console.log('Detected macOS - checking screen recording permissions...');
-    }
-
-    // Get available screen sources
-    const screenSources = await window.electronAPI?.getDesktopSources({
-      types: ['screen'],
-      thumbnailSize: { width: 150, height: 150 }
-    }) || [];
-
-    console.log('Screen sources available:', screenSources.length);
-
-    if (!screenSources.length) {
-      throw new Error('No screen sources available');
-    }
-
-    // Use the first screen source (primary display)
-    const screenSource = screenSources.find(source => source.name === 'Entire Screen') || screenSources[0];
-    console.log('Using screen source:', screenSource.name);
-    
-    // Check if we have the required source ID
-    if (!screenSource.id) {
-      throw new Error('Invalid screen source ID. Screen recording permissions may not be granted.');
-    }
-    
-    // Get media stream from desktop capturer using getUserMedia
-    console.log('Creating media stream from desktop source...');
-    
-    // Use modern video constraints format for Electron
-    const videoConstraints = {
-      audio: false,
-      video: {
-        chromeMediaSource: 'desktop',
-        chromeMediaSourceId: screenSource.id,
-        width: { min: 1280, ideal: 1920, max: 1920 },
-        height: { min: 720, ideal: 1080, max: 1080 },
-        frameRate: { ideal: 30, max: 60 }
-      } as any
-    };
-    
-    console.log('Using video constraints:', videoConstraints);
-    
-    // Add timeout to getUserMedia call
-    const getUserMediaWithTimeout = (constraints: any, timeoutMs: number = 10000) => {
-      return Promise.race([
-        navigator.mediaDevices.getUserMedia(constraints),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Screen capture request timed out. Please ensure screen recording permissions are granted.')), timeoutMs)
-        )
-      ]);
-    };
-    
-    this.mediaStream = await getUserMediaWithTimeout(videoConstraints, 10000) as MediaStream;
-
-    console.log('Screen capture stream created successfully');
-
-  // Create video element to capture frames from
-  this.video = document.createElement('video');
-  this.video.srcObject = this.mediaStream;
-  this.video.style.display = 'none';
-  document.body.appendChild(this.video);
-  
-  // Wait for video to load
-  await new Promise<void>((resolve, reject) => {
-    this.video!.onloadedmetadata = () => resolve();
-    this.video!.onerror = () => reject(new Error('Failed to load video'));
-  });
-
-  await this.video.play();
-
-  this.isCapturing = true;
-
-  // Set up interval to capture frames from the existing stream
-  this.captureInterval = window.setInterval(() => {
     try {
-      if (!this.video || !this.mediaStream) return;
-
-      const { videoWidth, videoHeight } = this.video;
+      console.log('Starting continuous capture for Electron...');
       
-      // Set canvas size to match video or specified dimensions
-      this.canvas.width = options.width || videoWidth;
-      this.canvas.height = options.height || videoHeight;
+      // Check platform using electronAPI
+      const platform = window.electronAPI?.process?.platform || '';
+      console.log('Detected platform:', platform);
+      
+      // Check permissions on macOS
+      if (platform === 'darwin') {
+        console.log('Detected macOS - checking screen recording permissions...');
+      }
 
-      // Draw current video frame to canvas
-      this.context.drawImage(
-        this.video,
-        options.x || 0,
-        options.y || 0,
-        options.width || videoWidth,
-        options.height || videoHeight,
-        0,
-        0,
-        this.canvas.width,
-        this.canvas.height
-      );
+      // Get available screen sources
+      const screenSources = await window.electronAPI?.getDesktopSources({
+        types: ['screen'],
+        thumbnailSize: { width: 150, height: 150 }
+      }) || [];
 
-      // Convert to base64
-      const imageData = this.canvas.toDataURL(
-        options.format || 'image/png',
-        options.quality || 0.8
-      );
+      console.log('Screen sources available:', screenSources.length);
 
-      const result: CaptureResult = {
-        imageData,
-        timestamp: Date.now(),
-        width: this.canvas.width,
-        height: this.canvas.height
+      if (!screenSources.length) {
+        throw new Error('No screen sources available');
+      }
+
+      // Use the first screen source (primary display)
+      const screenSource = screenSources.find(source => source.name === 'Entire Screen') || screenSources[0];
+      console.log('Using screen source:', screenSource.name);
+      
+      // Check if we have the required source ID
+      if (!screenSource.id) {
+        throw new Error('Invalid screen source ID. Screen recording permissions may not be granted.');
+      }
+      
+      // Get media stream from desktop capturer using getUserMedia
+      console.log('Creating media stream from desktop source...');
+      
+      // Use modern video constraints format for Electron
+      const videoConstraints = {
+        audio: false,
+        video: {
+          chromeMediaSource: 'desktop',
+          chromeMediaSourceId: screenSource.id,
+          width: { min: 1280, ideal: 1920, max: 1920 },
+          height: { min: 720, ideal: 1080, max: 1080 },
+          frameRate: { ideal: 30, max: 60 }
+        } as any
       };
+      
+      console.log('Using video constraints:', videoConstraints);
+      
+      // Add timeout to getUserMedia call
+      const getUserMediaWithTimeout = (constraints: any, timeoutMs: number = 10000) => {
+        return Promise.race([
+          navigator.mediaDevices.getUserMedia(constraints),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Screen capture request timed out. Please ensure screen recording permissions are granted.')), timeoutMs)
+          )
+        ]);
+      };
+      
+      this.mediaStream = await getUserMediaWithTimeout(videoConstraints, 10000) as MediaStream;
 
-      onCapture(result);
-    } catch (error) {
-      console.error('Continuous capture error:', error);
-      console.error('Continuous capture error - name:', error.name);
-      console.error('Continuous capture error - message:', error.message);
-      console.error('Continuous capture error - stack:', error.stack);
-      // Don't stop on individual errors, just log them
-    }
-  }, intervalMs);
+      console.log('Screen capture stream created successfully');
 
-  // Handle stream ending (user stops sharing)
-  this.mediaStream.getVideoTracks()[0].onended = () => {
-    console.log('Screen sharing stopped by user');
-    this.stopContinuousCapture();
-  };
-  } catch (error) {
-    console.error('Error in startContinuousCaptureElectron:', error);
-    console.error('Error in startContinuousCaptureElectron - name:', error.name);
-    console.error('Error in startContinuousCaptureElectron - message:', error.message);
-    console.error('Error in startContinuousCaptureElectron - stack:', error.stack);
-    
-    // Provide more helpful error messages for common issues
-    if (error.name === 'NotAllowedError') {
-      throw new Error('Screen recording permission denied. Please grant screen recording permissions in System Preferences > Security & Privacy > Screen Recording and restart the app.');
-    } else if (error.name === 'NotFoundError') {
-      throw new Error('No screen sources available for capture.');
-    } else if (error.name === 'AbortError') {
-      throw new Error('Screen capture was cancelled. On macOS, please ensure screen recording permissions are granted in System Preferences > Security & Privacy > Screen Recording, then restart the app.');
-    } else if (error.name === 'NotSupportedError') {
-      throw new Error('Screen capture is not supported in this environment.');
-    } else if (error.name === 'InvalidStateError') {
-      throw new Error('Invalid state for screen capture. Please try clicking the Start Capture button again.');
-    } else if (error.message && error.message.includes('timed out')) {
-      throw new Error('Screen capture request timed out. On macOS, please grant screen recording permissions in System Preferences > Security & Privacy > Screen Recording, then restart the app.');
+      // Create video element to capture frames from
+      this.video = document.createElement('video');
+      this.video.srcObject = this.mediaStream;
+      this.video.style.display = 'none';
+      document.body.appendChild(this.video);
+      
+      // Wait for video to load
+      await new Promise<void>((resolve, reject) => {
+        this.video!.onloadedmetadata = () => resolve();
+        this.video!.onerror = () => reject(new Error('Failed to load video'));
+      });
+
+      await this.video.play();
+
+      this.isCapturing = true;
+
+      // Set up interval to capture frames
+      this.captureInterval = window.setInterval(() => {
+        try {
+          if (!this.video || !this.mediaStream) return;
+
+          const { videoWidth, videoHeight } = this.video;
+          
+          // Set canvas size to match video or specified dimensions
+          this.canvas.width = options.width || videoWidth;
+          this.canvas.height = options.height || videoHeight;
+
+          // Draw current video frame to canvas
+          this.context.drawImage(
+            this.video,
+            options.x || 0,
+            options.y || 0,
+            options.width || videoWidth,
+            options.height || videoHeight,
+            0,
+            0,
+            this.canvas.width,
+            this.canvas.height
+          );
+
+          // Convert to base64
+          const imageData = this.canvas.toDataURL(
+            options.format || 'image/png',
+            options.quality || 0.8
+          );
+
+          const result: CaptureResult = {
+            imageData,
+            timestamp: Date.now(),
+            width: this.canvas.width,
+            height: this.canvas.height
+          };
+
+          onCapture(result);
+        } catch (error: unknown) {
+          if (error instanceof Error) {
+            console.error('Continuous capture error:', error);
+            console.error('Continuous capture error - name:', error.name);
+            console.error('Continuous capture error - message:', error.message);
+            console.error('Continuous capture error - stack:', error.stack);
+          } else {
+            console.error('Unknown continuous capture error:', error);
+          }
+          // Don't stop on individual errors, just log them
+        }
+      }, intervalMs);
+
+      // Handle stream ending (user stops sharing)
+      this.mediaStream.getVideoTracks()[0].onended = () => {
+        console.log('Screen sharing stopped by user');
+        this.stopContinuousCapture();
+      };
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error('Error starting capture:', error);
+        console.error('Error starting capture - name:', error.name);
+        console.error('Error starting capture - message:', error.message);
+        console.error('Error starting capture - stack:', error.stack);
+      } else {
+        console.error('Unknown error starting capture:', error);
+      }
+      throw error;
     }
-    
-    throw error;
   }
 
   private startFallbackCapture(
@@ -581,6 +575,16 @@ export class ScreenCapture {
   }
 
   // OCR implementation using OpenAI Vision API
+  private cleanupText(text: string): string {
+    return text
+      .replace(/\$\$/g, '') // Remove double dollar signs
+      .replace(/\\\(|\\\)/g, '') // Remove \( and \)
+      .replace(/###/g, '') // Remove markdown headers
+      .replace(/\\\[|\\\]/g, '') // Remove \[ and \]
+      .replace(/\\/g, '') // Remove remaining backslashes
+      .trim();
+  }
+
   async extractText(imageData: string): Promise<string> {
     try {
       console.log('Starting OCR process with OpenAI Vision API...');
@@ -618,7 +622,7 @@ export class ScreenCapture {
               content: [
                 {
                   type: 'text',
-                  text: 'Extract all text from this image, focusing on mathematical equations, formulas, and any readable text. Return only the extracted text without any commentary. If you cannot see any text or the image is unclear, respond with "No readable text found".'
+                  text: 'Extract all text from this image, focusing on mathematical equations and formulas. Format mathematical expressions cleanly without any special characters like $$, \\, (), or #. For example:\n- Convert "$$x + 5 = 10$$" to "x + 5 = 10"\n- Convert "\\(x\\)" to "x"\n- Convert "### Step 1" to "Step 1"\nRemove any markdown formatting, LaTeX delimiters, or other special characters that are not part of the actual mathematical content. If you cannot see any text or the image is unclear, respond with "No readable text found".'
                 },
                 {
                   type: 'image_url',
@@ -646,25 +650,26 @@ export class ScreenCapture {
       console.log('OpenAI Vision API response:', data);
       
       const extractedText = data.choices[0]?.message?.content || '';
+      const cleanedText = this.cleanupText(extractedText);
       
-      console.log('OCR extracted text:', extractedText);
+      console.log('OCR extracted text:', cleanedText);
       
-      if (!extractedText.trim() || extractedText.includes('No readable text found')) {
+      if (!cleanedText.trim() || cleanedText.includes('No readable text found')) {
         return 'No text detected in image. Try positioning the content more clearly in the captured area.';
       }
       
-      return extractedText.trim();
-    } catch (error) {
+      return cleanedText.trim();
+    } catch (error: unknown) {
       console.error('OCR error details:', error);
       
       if (error instanceof Error) {
         console.error('Error name:', error.name);
         console.error('Error message:', error.message);
         console.error('Error stack:', error.stack);
+        return `OCR processing failed: ${error.message}. Please try again or check your screen capture.`;
       }
       
-      // Return a more informative error message
-      return `OCR processing failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again or check your screen capture.`;
+      return 'OCR processing failed with an unknown error. Please try again or check your screen capture.';
     }
   }
 

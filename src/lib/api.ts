@@ -28,9 +28,9 @@ export class OpenAIService {
     }
 
     const prompts = {
-      explain: `Please explain this math problem step by step:\n\n${text}`,
-      quiz: `Based on this math content, generate a practice question:\n\n${text}`,
-      summarize: `Please provide a concise summary of this math content:\n\n${text}`
+      explain: `Please explain this math problem step by step. Format all mathematical expressions cleanly without any special characters (no $$, \\, #, or []). Present steps clearly with numbers (1., 2., etc.) instead of markdown headers:\n\n${text}`,
+      quiz: `Based on this math content, generate a practice question. Format all mathematical expressions cleanly without any special characters (no $$, \\, #, or []). Present steps clearly with numbers (1., 2., etc.) instead of markdown headers:\n\n${text}`,
+      summarize: `Please provide a concise summary of this math content. Format all mathematical expressions cleanly without any special characters (no $$, \\, #, or []). Present points clearly with numbers (1., 2., etc.) instead of markdown headers:\n\n${text}`
     };
 
     try {
@@ -46,7 +46,7 @@ export class OpenAIService {
           messages: [
             {
               role: 'system',
-              content: 'You are a helpful math tutor. Provide clear, concise explanations suitable for students.'
+              content: 'You are a helpful math tutor. Provide clear, concise explanations suitable for students. Format all mathematical expressions cleanly without special characters or delimiters. Use simple numbers (1., 2., etc.) for steps instead of markdown headers or special formatting.'
             },
             {
               role: 'user',
