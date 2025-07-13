@@ -6,10 +6,22 @@ import './App.css';
 declare global {
   interface Window {
     electronAPI?: {
+      getDesktopSources: (options: { types: string[]; thumbnailSize?: { width: number; height: number } }) => Promise<any[]>;
       onToggleSidebar: (callback: () => void) => void;
       removeToggleSidebarListener: () => void;
       platform: string;
       isElectron: boolean;
+      process: {
+        platform: string;
+        versions: {
+          node: string;
+          chrome: string;
+          electron: string;
+        };
+        env: {
+          NODE_ENV: string;
+        };
+      };
       versions: {
         node: string;
         chrome: string;
@@ -58,7 +70,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen">
       {/* Desktop app indicator */}
       {isElectron && (
         <div className="fixed top-4 right-4 z-50 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
@@ -68,81 +80,79 @@ function App() {
 
       {/* Main content area */}
       <div className={`transition-all duration-300 ${sidebarVisible ? 'pr-96' : 'pr-0'}`}>
-        <div className="flex flex-col items-center justify-center min-h-screen p-8">
-          <div className="max-w-2xl text-center">
-            <h1 className="text-4xl font-bold text-gray-800 mb-4">
-              Math Study Copilot
+        <div className="app-left-side">
+          <div className="content-container">
+            <h1 className="main-title">
+              Observer
             </h1>
-            <p className="text-lg text-gray-600 mb-8">
-              AI-powered math assistant that helps you study by reading your notes and providing contextual explanations, quizzes, and summaries.
+            <p className="subtitle">
+              Observer is an AI-powered math assistant that helps you study by reading your notes and providing contextual explanations, quizzes, and summaries.
             </p>
             
-            <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">How to Use</h2>
-              <ol className="text-left text-gray-600 space-y-2">
-                <li className="flex items-start">
-                  <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm mr-3 mt-0.5">1</span>
-                  Press <kbd className="bg-gray-200 px-2 py-1 rounded text-sm">Ctrl+Shift+M</kbd> to toggle the sidebar{isElectron && ' (or use the menu)'}
+            <div className="content-card">
+              <h2 className="section-title">How to Use</h2>
+              <ol className="instruction-list">
+                <li className="instruction-item">
+                  <span className="instruction-number">1</span>
+                  <span>Press <kbd>Ctrl+Shift+M</kbd> to toggle the sidebar{isElectron && ' (or use the menu)'}</span>
                 </li>
-                <li className="flex items-start">
-                  <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm mr-3 mt-0.5">2</span>
-                  Enter your OpenAI API key in the settings
+                <li className="instruction-item">
+                  <span className="instruction-number">2</span>
+                  <span>Enter your OpenAI API key in the settings</span>
                 </li>
-                <li className="flex items-start">
-                  <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm mr-3 mt-0.5">3</span>
-                  Choose your mode: Explain, Quiz, or Summarize
+                <li className="instruction-item">
+                  <span className="instruction-number">3</span>
+                  <span>Choose your mode: Explain, Quiz, or Summarize</span>
                 </li>
-                <li className="flex items-start">
-                  <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm mr-3 mt-0.5">4</span>
-                  Click "Start Capture" to begin screen analysis
+                <li className="instruction-item">
+                  <span className="instruction-number">4</span>
+                  <span>Click "Start Capture" to begin screen analysis</span>
                 </li>
                 {isElectron && (
-                  <li className="flex items-start">
-                    <span className="bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm mr-3 mt-0.5">5</span>
-                    Use <kbd className="bg-gray-200 px-2 py-1 rounded text-sm">Ctrl+T</kbd> to toggle "Always on Top" mode
+                  <li className="instruction-item">
+                    <span className="instruction-number">5</span>
+                    <span>Use <kbd>Ctrl+T</kbd> to toggle "Always on Top" mode</span>
                   </li>
                 )}
               </ol>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-blue-800 mb-2">
+            <div className="content-card">
+              <h3 className="section-title">
                 {isElectron ? 'Desktop App Features' : 'Features'}
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div>
-                  <strong className="text-blue-700">Explain Mode</strong>
-                  <p className="text-blue-600">Get step-by-step explanations of math problems</p>
+              <div className="features-grid">
+                <div className="feature-item">
+                  <h4 className="feature-title">Explain Mode</h4>
+                  <p className="feature-description">Get step-by-step explanations of math problems</p>
                 </div>
-                <div>
-                  <strong className="text-blue-700">Quiz Mode</strong>
-                  <p className="text-blue-600">Generate practice questions based on your notes</p>
+                <div className="feature-item">
+                  <h4 className="feature-title">Quiz Mode</h4>
+                  <p className="feature-description">Generate practice questions based on your notes</p>
                 </div>
-                <div>
-                  <strong className="text-blue-700">Summarize Mode</strong>
-                  <p className="text-blue-600">Get concise summaries of complex topics</p>
+                <div className="feature-item">
+                  <h4 className="feature-title">Summarize Mode</h4>
+                  <p className="feature-description">Get concise summaries of complex topics</p>
                 </div>
+                {isElectron && (
+                  <>
+                    <div className="feature-item">
+                      <h4 className="feature-title">Always on Top</h4>
+                      <p className="feature-description">Overlay over any application</p>
+                    </div>
+                    <div className="feature-item">
+                      <h4 className="feature-title">Global Shortcuts</h4>
+                      <p className="feature-description">Works system-wide, not just in browser</p>
+                    </div>
+                  </>
+                )}
               </div>
-              {isElectron && (
-                <div className="mt-4 pt-4 border-t border-blue-200">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <strong className="text-green-700">Always on Top</strong>
-                      <p className="text-green-600">Overlay over any application</p>
-                    </div>
-                    <div>
-                      <strong className="text-green-700">Global Shortcuts</strong>
-                      <p className="text-green-600">Works system-wide, not just in browser</p>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
             {!sidebarVisible && (
               <button
                 onClick={toggleSidebar}
-                className="mt-8 bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition-colors"
+                className="left-side-button"
               >
                 Open Sidebar
               </button>
