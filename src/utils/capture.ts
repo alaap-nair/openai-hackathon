@@ -611,7 +611,7 @@ export class ScreenCapture {
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: 'gpt-4o',
+          model: 'gpt-4o-mini',
           messages: [
             {
               role: 'user',
