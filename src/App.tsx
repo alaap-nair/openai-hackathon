@@ -101,10 +101,10 @@ const UserInsights: React.FC<{ insights: InsightsData }> = ({ insights }) => {
             </div>
           </div>
           <div className="insight-card">
-            <div className="insight-number">{insights.successRate}%</div>
+            <div className="insight-number">{Math.round(insights.successRate * 100) / 100}%</div>
             <div className="insight-label">Success Rate</div>
             <div className="progress-bar">
-              <div className="progress-fill" style={{ width: `${insights.successRate}%` }}></div>
+              <div className="progress-fill" style={{ width: `${Math.round(insights.successRate * 100) / 100}%` }}></div>
             </div>
           </div>
           <div className="insight-card">
@@ -387,11 +387,6 @@ function App() {
               {sidebarVisible ? (
                 // Original welcome content when sidebar is open
                 <>
-                  <div className="content-card welcome-card">
-                    <h2 className="welcome-title">Welcome to Observer 👋</h2>
-                    <p className="welcome-subtitle">Ready to dive into your notes?</p>
-                  </div>
-
                   <div className="content-card">
                     <h3 className="section-title">Today I'm working on:</h3>
                     <select className="subject-dropdown">
