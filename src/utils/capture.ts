@@ -54,6 +54,13 @@ export class ScreenCapture {
 
   private async captureScreenElectron(options: CaptureOptions = {}): Promise<CaptureResult> {
     try {
+      // Check if getDisplayMedia is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        throw new Error('Screen capture not supported in this environment');
+      }
+
+      console.log('Requesting screen capture permission...');
+      
       // Use getDisplayMedia which works reliably in Electron
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: {
@@ -62,6 +69,8 @@ export class ScreenCapture {
         },
         audio: false
       });
+
+      console.log('Screen capture permission granted, stream obtained');
 
       const video = document.createElement('video');
       video.srcObject = stream;
@@ -113,6 +122,23 @@ export class ScreenCapture {
       });
     } catch (error) {
       console.error('Electron screen capture failed:', error);
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+      
+      // Provide more helpful error messages for common issues
+      if (error.name === 'NotAllowedError') {
+        throw new Error('Screen recording permission denied. Please grant screen recording permissions in System Preferences > Security & Privacy > Screen Recording and restart the app.');
+      } else if (error.name === 'NotFoundError') {
+        throw new Error('No screen sources available for capture.');
+      } else if (error.name === 'AbortError') {
+        throw new Error('Screen capture was cancelled by the user.');
+      } else if (error.name === 'NotSupportedError') {
+        throw new Error('Screen capture is not supported in this environment.');
+      }
+      
       throw error;
     }
   }
@@ -221,6 +247,11 @@ export class ScreenCapture {
         onCapture(result);
       } catch (error) {
         console.error('Continuous capture error:', error);
+        console.error('Continuous capture error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        });
         // Don't stop on individual errors, just log them
       }
     }, intervalMs);
