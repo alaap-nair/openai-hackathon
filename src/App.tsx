@@ -85,7 +85,7 @@ function App() {
     // Minimal floating button when sidebar is hidden
     return (
       <div className="app-container">
-        <LeftDashboard isVisible={dashboardVisible} />
+        <LeftDashboard isVisible={dashboardVisible} sidebarVisible={sidebarVisible} />
         <div className="floating-controls">
           <button
             onClick={toggleSidebar}
@@ -112,7 +112,7 @@ function App() {
 
   return (
     <div className="app-container">
-      <LeftDashboard isVisible={dashboardVisible} />
+      <LeftDashboard isVisible={dashboardVisible} sidebarVisible={sidebarVisible} />
       
       <div className="overlay-app">
         {/* Desktop app indicator */}

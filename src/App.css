@@ -18,7 +18,7 @@
 .overlay-app {
   position: fixed;
   top: 0;
-  left: 320px; /* Account for left dashboard width (w-80 = 320px) */
+  left: 448px; /* Account for left dashboard width (w-[28rem] = 448px) */
   right: 0;
   height: 100vh;
   background: rgba(255, 255, 255, 0.95);
@@ -29,6 +29,12 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+/* When sidebar is hidden, hide the overlay completely */
+.overlay-app.hidden {
+  display: none;
 }
 
 .logo {
@@ -464,5 +470,11 @@ kbd {
   .floating-button {
     width: 48px;
     height: 48px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .overlay-app {
+    left: 448px; /* Keep dashboard visible on medium screens */
   }
 }
