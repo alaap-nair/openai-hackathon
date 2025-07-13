@@ -242,21 +242,42 @@ export class ScreenCapture {
     try {
       console.log('Starting continuous capture for Electron...');
       
-      // Get the media stream once (requires user gesture)
-      console.log('Requesting screen capture permission...');
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-        throw new Error('Screen capture not supported in this environment');
+      // Get available screen sources using Electron's desktopCapturer
+      if (!window.electronAPI) {
+        throw new Error('Electron API not available');
       }
 
-      this.mediaStream = await navigator.mediaDevices.getDisplayMedia({
-        video: {
-          width: { max: 1920 },
-          height: { max: 1080 }
-        },
-        audio: false
+      console.log('Getting desktop sources...');
+      const sources = await window.electronAPI.getDesktopSources({
+        types: ['screen', 'window'],
+        thumbnailSize: { width: 1920, height: 1080 }
       });
 
-      console.log('Screen capture permission granted, stream obtained');
+      if (sources.length === 0) {
+        throw new Error('No screen sources available');
+      }
+
+      // Use the first screen source (primary display)
+      const screenSource = sources.find(source => source.name === 'Entire Screen') || sources[0];
+      console.log('Using screen source:', screenSource.name);
+      
+      // Get media stream from desktop capturer using getUserMedia
+      console.log('Creating media stream from desktop source...');
+      this.mediaStream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          mandatory: {
+            chromeMediaSource: 'desktop',
+            chromeMediaSourceId: screenSource.id,
+            minWidth: 1280,
+            maxWidth: 1920,
+            minHeight: 720,
+            maxHeight: 1080
+          }
+        } as any
+      });
+
+      console.log('Screen capture stream created successfully');
 
     // Create video element to capture frames from
     this.video = document.createElement('video');

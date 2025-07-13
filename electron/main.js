@@ -27,7 +27,9 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       webSecurity: false, // Temporarily disable for development
       allowRunningInsecureContent: isDev,
-      experimentalFeatures: true
+      experimentalFeatures: true,
+      // Enable screen capture features
+      enableBlinkFeatures: 'DesktopCaptureAPI'
     },
     // Desktop app features
     alwaysOnTop: isAlwaysOnTop,
