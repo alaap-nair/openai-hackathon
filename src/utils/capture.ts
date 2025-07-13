@@ -65,23 +65,51 @@ export class ScreenCapture {
 
   private async captureScreenElectron(options: CaptureOptions = {}): Promise<CaptureResult> {
     try {
-      // Check if getDisplayMedia is available
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-        throw new Error('Screen capture not supported in this environment');
+      // Check if we have the Electron API available
+      if (!window.electronAPI || !window.electronAPI.getDesktopSources) {
+        throw new Error('Electron desktop capture API not available');
       }
 
-      console.log('Requesting screen capture permission...');
+      console.log('Getting desktop sources...');
       
-      // Use getDisplayMedia which works reliably in Electron
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: {
-          width: { max: 1920 },
-          height: { max: 1080 }
-        },
-        audio: false
+      // Get available desktop sources using Electron's desktopCapturer
+      const sources = await window.electronAPI.getDesktopSources({
+        types: ['screen', 'window'],
+        thumbnailSize: { width: 1920, height: 1080 }
       });
 
-      console.log('Screen capture permission granted, stream obtained');
+      if (!sources || sources.length === 0) {
+        throw new Error('No desktop sources available');
+      }
+
+      console.log('Found desktop sources:', sources.length);
+
+      // For automatic capture, use the first screen source
+      // In a real app, you might want to let users choose
+      const screenSource = sources.find(source => source.id.startsWith('screen:')) || sources[0];
+      
+      if (!screenSource) {
+        throw new Error('No screen source available');
+      }
+
+      console.log('Using screen source:', screenSource.name);
+
+      // Use getUserMedia with the Electron desktop capturer source
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          mandatory: {
+            chromeMediaSource: 'desktop',
+            chromeMediaSourceId: screenSource.id,
+            minWidth: 1280,
+            maxWidth: 1920,
+            minHeight: 720,
+            maxHeight: 1080
+          }
+        } as any
+      });
+
+      console.log('Screen capture stream obtained');
 
       const video = document.createElement('video');
       video.srcObject = stream;
@@ -108,10 +136,10 @@ export class ScreenCapture {
             this.canvas.height
           );
 
-          // Convert to base64
+          // Convert to base64 with high quality for OCR
           const imageData = this.canvas.toDataURL(
             options.format || 'image/png',
-            options.quality || 0.8
+            options.quality || 1.0
           );
 
           // Clean up
@@ -126,25 +154,34 @@ export class ScreenCapture {
           });
         };
 
-        video.onerror = () => {
+        video.onerror = (error) => {
+          console.error('Video error:', error);
           stream.getTracks().forEach(track => track.stop());
-          reject(new Error('Failed to load video'));
+          reject(new Error('Failed to load video stream'));
         };
+
+        // Add timeout to prevent hanging
+        setTimeout(() => {
+          if (video.readyState === 0) {
+            stream.getTracks().forEach(track => track.stop());
+            reject(new Error('Video loading timeout'));
+          }
+        }, 10000);
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Electron screen capture failed:', error);
-      console.error('Error details - name:', error.name);
-      console.error('Error details - message:', error.message);
-      console.error('Error details - stack:', error.stack);
+      console.error('Error details - name:', error?.name);
+      console.error('Error details - message:', error?.message);
+      console.error('Error details - stack:', error?.stack);
       
       // Provide more helpful error messages for common issues
-      if (error.name === 'NotAllowedError') {
+      if (error?.name === 'NotAllowedError') {
         throw new Error('Screen recording permission denied. Please grant screen recording permissions in System Preferences > Security & Privacy > Screen Recording and restart the app.');
-      } else if (error.name === 'NotFoundError') {
+      } else if (error?.name === 'NotFoundError') {
         throw new Error('No screen sources available for capture.');
-      } else if (error.name === 'AbortError') {
+      } else if (error?.name === 'AbortError') {
         throw new Error('Screen capture was cancelled by the user.');
-      } else if (error.name === 'NotSupportedError') {
+      } else if (error?.name === 'NotSupportedError') {
         throw new Error('Screen capture is not supported in this environment.');
       }
       
@@ -214,7 +251,7 @@ export class ScreenCapture {
           reject(new Error('Failed to load video'));
         };
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Browser screen capture failed:', error);
       throw error;
     }
@@ -235,11 +272,11 @@ export class ScreenCapture {
       } else {
         await this.startContinuousCaptureBrowser(intervalMs, onCapture, options);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to start continuous capture:', error);
-      console.error('Failed to start continuous capture - name:', error.name);
-      console.error('Failed to start continuous capture - message:', error.message);
-      console.error('Failed to start continuous capture - stack:', error.stack);
+      console.error('Failed to start continuous capture - name:', error?.name);
+      console.error('Failed to start continuous capture - message:', error?.message);
+      console.error('Failed to start continuous capture - stack:', error?.stack);
       this.stopContinuousCapture();
       
       // Start fallback capture to show test pattern
@@ -534,11 +571,11 @@ export class ScreenCapture {
         };
 
         onCapture(result);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Continuous capture error:', error);
-        console.error('Continuous capture error - name:', error.name);
-        console.error('Continuous capture error - message:', error.message);
-        console.error('Continuous capture error - stack:', error.stack);
+        console.error('Continuous capture error - name:', error?.name);
+        console.error('Continuous capture error - message:', error?.message);
+        console.error('Continuous capture error - stack:', error?.stack);
         // Don't stop on individual errors, just log them
       }
     }, intervalMs);
@@ -614,14 +651,14 @@ export class ScreenCapture {
     }
   }
 
-  private optimizeImageForOCR(imageData: string): string {
+  private optimizeImageForOCR(imageData: string): Promise<string> {
     try {
       // Create a temporary canvas to process the image
       const tempCanvas = document.createElement('canvas');
       const tempCtx = tempCanvas.getContext('2d');
       if (!tempCtx) {
         console.warn('Failed to get canvas context for image optimization');
-        return imageData;
+        return Promise.resolve(imageData);
       }
 
       const img = new Image();
@@ -664,7 +701,7 @@ export class ScreenCapture {
       
     } catch (error) {
       console.warn('Error optimizing image for OCR:', error);
-      return imageData;
+      return Promise.resolve(imageData);
     }
   }
 
@@ -722,7 +759,7 @@ export class ScreenCapture {
         
         // Try to optimize the image
         try {
-          processedImageData = await this.optimizeImageForOCR(processedImageData) as string;
+          processedImageData = await this.optimizeImageForOCR(processedImageData);
           console.log('Image optimized for OCR');
         } catch (error) {
           console.warn('Failed to optimize image, using original:', error);
