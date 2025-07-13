@@ -226,6 +226,9 @@ export class ScreenCapture {
       }
     } catch (error) {
       console.error('Failed to start continuous capture:', error);
+      console.error('Failed to start continuous capture - name:', error.name);
+      console.error('Failed to start continuous capture - message:', error.message);
+      console.error('Failed to start continuous capture - stack:', error.stack);
       this.stopContinuousCapture();
       throw error;
     }
@@ -236,23 +239,24 @@ export class ScreenCapture {
     onCapture: (result: CaptureResult) => void,
     options: CaptureOptions
   ): Promise<void> {
-    console.log('Starting continuous capture for Electron...');
-    
-    // Get the media stream once (requires user gesture)
-    console.log('Requesting screen capture permission...');
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-      throw new Error('Screen capture not supported in this environment');
-    }
+    try {
+      console.log('Starting continuous capture for Electron...');
+      
+      // Get the media stream once (requires user gesture)
+      console.log('Requesting screen capture permission...');
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        throw new Error('Screen capture not supported in this environment');
+      }
 
-    this.mediaStream = await navigator.mediaDevices.getDisplayMedia({
-      video: {
-        width: { max: 1920 },
-        height: { max: 1080 }
-      },
-      audio: false
-    });
+      this.mediaStream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          width: { max: 1920 },
+          height: { max: 1080 }
+        },
+        audio: false
+      });
 
-    console.log('Screen capture permission granted, stream obtained');
+      console.log('Screen capture permission granted, stream obtained');
 
     // Create video element to capture frames from
     this.video = document.createElement('video');
@@ -322,6 +326,27 @@ export class ScreenCapture {
       console.log('Screen sharing stopped by user');
       this.stopContinuousCapture();
     };
+    } catch (error) {
+      console.error('Error in startContinuousCaptureElectron:', error);
+      console.error('Error in startContinuousCaptureElectron - name:', error.name);
+      console.error('Error in startContinuousCaptureElectron - message:', error.message);
+      console.error('Error in startContinuousCaptureElectron - stack:', error.stack);
+      
+      // Provide more helpful error messages for common issues
+      if (error.name === 'NotAllowedError') {
+        throw new Error('Screen recording permission denied. Please grant screen recording permissions in System Preferences > Security & Privacy > Screen Recording and restart the app.');
+      } else if (error.name === 'NotFoundError') {
+        throw new Error('No screen sources available for capture.');
+      } else if (error.name === 'AbortError') {
+        throw new Error('Screen capture was cancelled by the user.');
+      } else if (error.name === 'NotSupportedError') {
+        throw new Error('Screen capture is not supported in this environment.');
+      } else if (error.name === 'InvalidStateError') {
+        throw new Error('Invalid state for screen capture. Please try clicking the Start Capture button again.');
+      }
+      
+      throw error;
+    }
   }
 
   private async startContinuousCaptureBrowser(
