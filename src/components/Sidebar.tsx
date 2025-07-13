@@ -99,9 +99,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isVisible, onToggleVisibility 
       );
     } catch (error) {
       console.error('Error starting capture:', error);
-      console.error('Error starting capture - name:', error.name);
-      console.error('Error starting capture - message:', error.message);
-      console.error('Error starting capture - stack:', error.stack);
+      if (error instanceof Error) {
+        console.error('Error starting capture - name:', error.name);
+        console.error('Error starting capture - message:', error.message);
+        console.error('Error starting capture - stack:', error.stack);
+      }
       setError(error instanceof Error ? error.message : 'Failed to start capture');
       setIsCapturing(false);
     }

@@ -14,27 +14,6 @@ interface CaptureResult {
   height: number;
 }
 
-// Electron API types
-declare global {
-  interface Window {
-    electronAPI?: {
-      getDesktopSources: (options: { types: string[]; thumbnailSize?: { width: number; height: number } }) => Promise<any[]>;
-      isElectron: boolean;
-      process: {
-        platform: string;
-        versions: {
-          node: string;
-          chrome: string;
-          electron: string;
-        };
-        env: {
-          NODE_ENV: string;
-        };
-      };
-    };
-  }
-}
-
 export class ScreenCapture {
   private canvas: HTMLCanvasElement;
   private context: CanvasRenderingContext2D;
@@ -51,7 +30,7 @@ export class ScreenCapture {
       throw new Error('Failed to get 2D context');
     }
     this.context = context;
-    this.isElectron = !!(window.electronAPI?.isElectron);
+    this.isElectron = !!(window as any).electronAPI;
     console.log('ScreenCapture initialized, Electron mode:', this.isElectron);
   }
 
@@ -445,7 +424,7 @@ export class ScreenCapture {
   private startFallbackCapture(
     intervalMs: number,
     onCapture: (result: CaptureResult) => void,
-    options: CaptureOptions
+    _options: CaptureOptions
   ): void {
     console.log('Starting fallback capture with test pattern...');
     
@@ -730,7 +709,7 @@ export class ScreenCapture {
       console.log('Image data prefix:', imageData.substring(0, 50));
       
       // Debug: Save the captured image for inspection (only in development)
-      if (this.isElectron && window.electronAPI?.process?.env?.NODE_ENV === 'development') {
+      if (this.isElectron && (window as any).electronAPI?.process?.env?.NODE_ENV === 'development') {
         this.debugSaveImage(imageData, `ocr-debug-${Date.now()}.png`);
       }
       

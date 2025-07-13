@@ -1,8 +1,3 @@
-interface AnalyzeRequest {
-  text: string;
-  mode: 'explain' | 'quiz' | 'summarize';
-}
-
 export class OpenAIService {
   private apiKey: string;
   private baseUrl: string;
