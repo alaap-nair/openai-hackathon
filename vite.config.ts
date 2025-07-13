@@ -11,17 +11,7 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    assetsDir: 'assets',
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'tesseract': ['tesseract.js']
-        }
-      }
-    }
-  },
-  optimizeDeps: {
-    exclude: ['tesseract.js']
+    assetsDir: 'assets'
   },
   define: {
     global: 'globalThis'

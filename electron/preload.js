@@ -25,6 +25,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // App information
   isElectron: true,
   
+  // Process information
+  process: {
+    platform: process.platform,
+    versions: process.versions,
+    env: {
+      NODE_ENV: process.env.NODE_ENV
+    }
+  },
+  
   // Version information
   versions: {
     node: process.versions.node,

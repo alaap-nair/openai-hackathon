@@ -16,6 +16,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isVisible, onToggleVisibility 
   const [result, setResult] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
+  const [lastAnalysisTime, setLastAnalysisTime] = useState<number>(0);
 
   useEffect(() => {
     // Load API key from localStorage
@@ -39,18 +40,54 @@ export const Sidebar: React.FC<SidebarProps> = ({ isVisible, onToggleVisibility 
       
       const screenCapture = getScreenCapture();
       await screenCapture.startContinuousCapture(
-        3000, // 3 second interval
+        10000, // 10 second interval to reduce API calls
         async (captureResult) => {
           try {
             setIsLoading(true);
             
+            // Debug: Log what we captured
+            console.log('Capture result received:', {
+              timestamp: captureResult.timestamp,
+              width: captureResult.width,
+              height: captureResult.height,
+              imageDataSize: captureResult.imageData.length,
+              imageDataPrefix: captureResult.imageData.substring(0, 100)
+            });
+            
+            // Debug: Log capture details (without downloading)
+            console.log('Processing captured image:', {
+              timestamp: captureResult.timestamp,
+              width: captureResult.width,
+              height: captureResult.height,
+              imageDataSize: captureResult.imageData.length,
+              isDataURL: captureResult.imageData.startsWith('data:'),
+              format: captureResult.imageData.startsWith('data:') ? captureResult.imageData.split(';')[0] : 'unknown'
+            });
+            
             // Extract text from image (OCR)
             const extractedText = await screenCapture.extractText(captureResult.imageData);
             
+            console.log('OCR extracted text:', extractedText);
+            
             if (extractedText.trim()) {
+              // Check if enough time has passed since last analysis
+              const now = Date.now();
+              const timeSinceLastAnalysis = now - lastAnalysisTime;
+              const minIntervalMs = 5000; // 5 seconds minimum between analyses
+              
+              if (timeSinceLastAnalysis < minIntervalMs) {
+                const waitTime = Math.ceil((minIntervalMs - timeSinceLastAnalysis) / 1000);
+                setError(`Please wait ${waitTime} seconds before requesting another analysis.`);
+                return;
+              }
+              
               // Send to OpenAI for analysis
               const analysisResult = await openaiService.analyze(extractedText, mode);
               setResult(analysisResult);
+              setLastAnalysisTime(now);
+              setError(''); // Clear any previous errors
+            } else {
+              setError('No text could be extracted from the captured image. Please check if screen capture is working correctly.');
             }
           } catch (error) {
             console.error('Error processing capture:', error);
