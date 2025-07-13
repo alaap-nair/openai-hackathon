@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
-import { LeftDashboard } from './components/LeftDashboard';
 import './App.css';
 
 // Electron API type declaration
@@ -32,11 +31,83 @@ declare global {
   }
 }
 
+// Component for User Insights
+const UserInsights = () => (
+  <>
+    <div className="content-card insights-section">
+      <h3 className="section-title">Your Study Insights</h3>
+      <div className="insights-grid">
+        <div className="insight-card">
+          <div className="insight-number">247</div>
+          <div className="insight-label">Problems Solved</div>
+          <div className="progress-bar">
+            <div className="progress-fill" style={{ width: '82%' }}></div>
+          </div>
+        </div>
+        <div className="insight-card">
+          <div className="insight-number">94%</div>
+          <div className="insight-label">Success Rate</div>
+          <div className="progress-bar">
+            <div className="progress-fill" style={{ width: '94%' }}></div>
+          </div>
+        </div>
+        <div className="insight-card">
+          <div className="insight-number">18</div>
+          <div className="insight-label">Study Streak</div>
+          <div className="progress-bar">
+            <div className="progress-fill" style={{ width: '60%' }}></div>
+          </div>
+        </div>
+        <div className="insight-card">
+          <div className="insight-number">3.2h</div>
+          <div className="insight-label">Today</div>
+          <div className="progress-bar">
+            <div className="progress-fill" style={{ width: '75%' }}></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div className="content-card">
+      <h3 className="section-title">This Week's Performance</h3>
+      <div className="insights-grid">
+        <div className="insight-card">
+          <div className="insight-number">Algebra</div>
+          <div className="insight-label">Strong</div>
+          <div className="progress-bar">
+            <div className="progress-fill" style={{ width: '88%' }}></div>
+          </div>
+        </div>
+        <div className="insight-card">
+          <div className="insight-number">Calculus</div>
+          <div className="insight-label">Improving</div>
+          <div className="progress-bar">
+            <div className="progress-fill" style={{ width: '65%' }}></div>
+          </div>
+        </div>
+        <div className="insight-card">
+          <div className="insight-number">Geometry</div>
+          <div className="insight-label">Excellent</div>
+          <div className="progress-bar">
+            <div className="progress-fill" style={{ width: '95%' }}></div>
+          </div>
+        </div>
+        <div className="insight-card">
+          <div className="insight-number">Stats</div>
+          <div className="insight-label">Needs Focus</div>
+          <div className="progress-bar">
+            <div className="progress-fill" style={{ width: '42%' }}></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </>
+);
+
 function App() {
   const [sidebarVisible, setSidebarVisible] = useState(true);
-  const [dashboardVisible] = useState(true);
   const [isElectron, setIsElectron] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false); // For showing help/info
+  const [howToUseExpanded, setHowToUseExpanded] = useState(false);
 
   useEffect(() => {
     // Check if running in Electron
@@ -77,119 +148,160 @@ function App() {
     setSidebarVisible(prev => !prev);
   };
 
-  const toggleExpanded = () => {
-    setIsExpanded(prev => !prev);
+  const toggleHowToUse = () => {
+    setHowToUseExpanded(prev => !prev);
   };
 
-  if (!sidebarVisible) {
-    // Minimal floating button when sidebar is hidden
-    return (
-      <div className="app-container">
-        <LeftDashboard isVisible={dashboardVisible} sidebarVisible={sidebarVisible} />
-        <div className="floating-controls">
-          <button
-            onClick={toggleSidebar}
-            className="floating-button main-button"
-            title="Open Math Assistant"
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 12l2 2 4-4"/>
-              <path d="M21 12c-1 0-3-1-3-3s2-3 3-3 3 1 3 3-2 3-3 3"/>
-              <path d="M3 12c1 0 3-1 3-3s-2-3-3-3-3 1-3 3 2 3 3 3"/>
-              <path d="M12 3c0 1-1 3-3 3s-3-2-3-3 1-3 3-3 3 2 3 3"/>
-              <path d="M12 21c0-1-1-3-3-3s-3 2-3 3 1 3 3 3 3-2 3-3"/>
-            </svg>
-          </button>
-          {isElectron && (
-            <div className="floating-indicator">
-              Desktop
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="app-container">
-      <LeftDashboard isVisible={dashboardVisible} sidebarVisible={sidebarVisible} />
-      
-      <div className="overlay-app">
-        {/* Desktop app indicator */}
-        {isElectron && (
-          <div className="desktop-indicator">
-            Desktop App
-          </div>
-        )}
+    <div className="app">
+      {/* Sidebar - conditionally rendered based on sidebarVisible */}
+      {sidebarVisible && (
+        <Sidebar
+          isVisible={sidebarVisible}
+          onToggleVisibility={toggleSidebar}
+        />
+      )}
 
-        {/* Main overlay content */}
-        <div className="overlay-content">
-          {/* Compact header */}
-          <div className="overlay-header">
-            <div className="header-info">
-              <h1 className="overlay-title">Math Assistant</h1>
-              <p className="overlay-subtitle">AI-powered analysis</p>
-            </div>
-            <div className="header-actions">
-              <button
-                onClick={toggleExpanded}
-                className="action-button"
-                title={isExpanded ? 'Hide help' : 'Show help'}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10"/>
-                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-                  <path d="M12 17h.01"/>
-                </svg>
-              </button>
-              <button
-                onClick={toggleSidebar}
-                className="action-button close-button"
-                title="Hide assistant"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18"/>
-                  <line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          {/* Help section - only shown when expanded */}
-          {isExpanded && (
-            <div className="help-section">
-              <div className="help-card">
-                <h3>Quick Start</h3>
-                <ul>
-                  <li>Position your notes/problems on the left side</li>
-                  <li>Enter your OpenAI API key below</li>
-                  <li>Choose a mode and capture!</li>
-                </ul>
-              </div>
-              <div className="help-card">
-                <h3>Modes</h3>
-                <div className="modes-quick">
-                  <span className="mode-tag">🎯 Explain</span>
-                  <span className="mode-tag">❓ Quiz</span>
-                  <span className="mode-tag">📝 Summarize</span>
+      {/* Main content area */}
+      <div className={`transition-all duration-300 ${sidebarVisible ? 'pr-96' : 'pr-0'}`}>
+        <div className="app-left-side">
+          <div className="two-column-layout">
+            {/* Left Column - Scrollable Dashboard */}
+            <div className="content-column">
+              <h1 className="main-title">
+                Observer
+              </h1>
+              <p className="subtitle">
+                Observer is an AI-powered math assistant that helps you study by reading your notes and providing contextual explanations, quizzes, and summaries.
+              </p>
+              
+              {/* Collapsible How to Use Section */}
+              <div className="content-card">
+                <div className="collapsible-header" onClick={toggleHowToUse}>
+                  <h2 className="section-title">How to Use</h2>
+                  <svg
+                    className={`collapsible-arrow ${howToUseExpanded ? 'expanded' : ''}`}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </div>
+                <div className={`collapsible-content ${howToUseExpanded ? 'expanded' : 'collapsed'}`}>
+                  <ol className="instruction-list">
+                    <li className="instruction-item">
+                      <span className="instruction-number">1</span>
+                      <span>Press <kbd>Ctrl+Shift+M</kbd> to toggle the sidebar{isElectron && ' (or use the menu)'}</span>
+                    </li>
+                    <li className="instruction-item">
+                      <span className="instruction-number">2</span>
+                      <span>Enter your OpenAI API key in the settings</span>
+                    </li>
+                    <li className="instruction-item">
+                      <span className="instruction-number">3</span>
+                      <span>Choose your mode: Explain, Quiz, or Summarize</span>
+                    </li>
+                    <li className="instruction-item">
+                      <span className="instruction-number">4</span>
+                      <span>Click "Start Capture" to begin screen analysis</span>
+                    </li>
+                    {isElectron && (
+                      <li className="instruction-item">
+                        <span className="instruction-number">5</span>
+                        <span>Use <kbd>Ctrl+T</kbd> to toggle "Always on Top" mode</span>
+                      </li>
+                    )}
+                  </ol>
                 </div>
               </div>
-              {isElectron && (
-                <div className="help-card">
-                  <h3>Shortcuts</h3>
-                  <div className="shortcuts-quick">
-                    <span><kbd>Ctrl+Shift+M</kbd> Toggle</span>
-                    <span><kbd>Ctrl+T</kbd> Always on top</span>
+
+              <div className="content-card">
+                <h3 className="section-title">
+                  {isElectron ? 'Desktop App Features' : 'Features'}
+                </h3>
+                <div className="features-grid">
+                  <div className="feature-item">
+                    <h4 className="feature-title">Explain Mode</h4>
+                    <p className="feature-description">Get step-by-step explanations of math problems</p>
                   </div>
+                  <div className="feature-item">
+                    <h4 className="feature-title">Quiz Mode</h4>
+                    <p className="feature-description">Generate practice questions based on your notes</p>
+                  </div>
+                  <div className="feature-item">
+                    <h4 className="feature-title">Summarize Mode</h4>
+                    <p className="feature-description">Get concise summaries of complex topics</p>
+                  </div>
+                  {isElectron && (
+                    <>
+                      <div className="feature-item">
+                        <h4 className="feature-title">Always on Top</h4>
+                        <p className="feature-description">Overlay over any application</p>
+                      </div>
+                      <div className="feature-item">
+                        <h4 className="feature-title">Global Shortcuts</h4>
+                        <p className="feature-description">Works system-wide, not just in browser</p>
+                      </div>
+                    </>
+                  )}
                 </div>
+              </div>
+
+              {/* User Insights Section - Only show in left column if sidebar is visible */}
+              {sidebarVisible && <UserInsights />}
+            </div>
+
+            {/* Right Column - Show welcome cards when sidebar is open, insights when closed */}
+            <div className="content-column">
+              {sidebarVisible ? (
+                // Original welcome content when sidebar is open
+                <>
+                  <div className="content-card welcome-card">
+                    <h2 className="welcome-title">Welcome to Observer 👋</h2>
+                    <p className="welcome-subtitle">Ready to dive into your notes?</p>
+                  </div>
+
+                  <div className="content-card">
+                    <h3 className="section-title">Today I'm working on:</h3>
+                    <select className="subject-dropdown">
+                      <option value="">Select a subject...</option>
+                      <option value="algebra">Algebra</option>
+                      <option value="geometry">Geometry</option>
+                      <option value="calculus">Calculus</option>
+                    </select>
+                  </div>
+
+                  <div className="content-card">
+                    <h3 className="section-title">Quick Actions</h3>
+                    <div className="quick-actions">
+                      <button className="action-button">Re-analyze Current Screen</button>
+                      <button className="action-button">Start a New Math Session</button>
+                    </div>
+                  </div>
+
+                  <div className="content-card">
+                    <h3 className="section-title">Today's Study Goal</h3>
+                    <p className="goal-text">Review 3 Linear equations problems + try 1 quiz</p>
+                    <button className="action-button mark-done">Mark as Done</button>
+                  </div>
+                </>
+              ) : (
+                // Show insights when sidebar is closed
+                <UserInsights />
               )}
             </div>
-          )}
-
-          {/* Main sidebar content */}
-          <div className="sidebar-container">
-            <Sidebar isVisible={true} onToggleVisibility={toggleSidebar} />
           </div>
+
+          {!sidebarVisible && (
+            <button
+              onClick={toggleSidebar}
+              className="left-side-button"
+            >
+              Open Sidebar
+            </button>
+          )}
         </div>
       </div>
     </div>
