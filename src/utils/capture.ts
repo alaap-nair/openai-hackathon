@@ -54,36 +54,13 @@ export class ScreenCapture {
 
   private async captureScreenElectron(options: CaptureOptions = {}): Promise<CaptureResult> {
     try {
-      if (!window.electronAPI) {
-        throw new Error('Electron API not available');
-      }
-
-      // Get available screen sources
-      const sources = await window.electronAPI.getDesktopSources({
-        types: ['screen', 'window'],
-        thumbnailSize: { width: 1920, height: 1080 }
-      });
-
-      if (sources.length === 0) {
-        throw new Error('No screen sources available');
-      }
-
-      // Use the first screen source (primary display)
-      const screenSource = sources.find(source => source.name === 'Entire Screen') || sources[0];
-      
-      // Get media stream from desktop capturer
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: false,
+      // Use getDisplayMedia which works reliably in Electron
+      const stream = await navigator.mediaDevices.getDisplayMedia({
         video: {
-          mandatory: {
-            chromeMediaSource: 'desktop',
-            chromeMediaSourceId: screenSource.id,
-            minWidth: 1280,
-            maxWidth: 1920,
-            minHeight: 720,
-            maxHeight: 1080
-          }
-        } as any
+          width: { max: 1920 },
+          height: { max: 1080 }
+        },
+        audio: false
       });
 
       const video = document.createElement('video');
