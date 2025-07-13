@@ -17,10 +17,34 @@ export class OpenAIService {
       throw new Error('OpenAI API key not set');
     }
 
+    const systemPrompt = `You are a helpful math tutor analyzing text captured from a computer screen via OCR. 
+
+IMPORTANT: The text below contains mixed content from screen capture including:
+- UI elements, menus, and application text
+- Browser content and navigation elements  
+- Possibly some math problems, equations, or mathematical content
+
+Your task:
+1. IGNORE all non-mathematical content (UI text, menus, timestamps, etc.)
+2. IDENTIFY any mathematical content (equations, problems, formulas, etc.)
+3. If you find mathematical content, focus ONLY on that for your response
+4. If NO clear mathematical content is found, politely explain this
+
+Be concise and helpful. Focus only on the mathematics, not the screen noise.`;
+
     const prompts = {
-      explain: `Please explain this math problem step by step:\n\n${text}`,
-      quiz: `Based on this math content, generate a practice question:\n\n${text}`,
-      summarize: `Please provide a concise summary of this math content:\n\n${text}`
+      explain: `From the screen capture text below, find any math problems or equations and explain them step by step. If no clear math content is found, let me know.
+
+Screen capture text:
+${text}`,
+      quiz: `From the screen capture text below, identify any mathematical content and create a similar practice question. If no clear math content is found, let me know.
+
+Screen capture text:
+${text}`,
+      summarize: `From the screen capture text below, identify and summarize any mathematical concepts or problems. If no clear math content is found, let me know.
+
+Screen capture text:
+${text}`
     };
 
     try {
@@ -35,7 +59,7 @@ export class OpenAIService {
           messages: [
             {
               role: 'system',
-              content: 'You are a helpful math tutor. Provide clear, concise explanations suitable for students.'
+              content: systemPrompt
             },
             {
               role: 'user',
