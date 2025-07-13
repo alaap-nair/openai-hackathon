@@ -89,6 +89,15 @@
   box-shadow: 0 6px 20px rgba(191, 191, 191, 0.2);
   padding: 22px;
   margin-bottom: 20px;
+  transition: all 200ms ease-out;
+  transform-origin: center;
+  will-change: transform, background-color;
+}
+
+.content-card:hover {
+  transform: scale(1.03);
+  background-color: rgba(171, 194, 0, 0.15);
+  box-shadow: 0 8px 24px rgba(171, 194, 0, 0.2);
 }
 
 .section-title {
@@ -143,6 +152,15 @@
   background-color: rgba(2, 67, 87, 0.1);
   border-radius: 12px;
   padding: 14px;
+  transition: all 200ms ease-out;
+  transform-origin: center;
+  will-change: transform, background-color;
+}
+
+.feature-item:hover {
+  transform: scale(1.03);
+  background-color: rgba(171, 194, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(171, 194, 0, 0.15);
 }
 
 .feature-title {
