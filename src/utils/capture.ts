@@ -367,44 +367,12 @@ export class ScreenCapture {
       const isElectron = !!(window as any).electronAPI?.isElectron;
       console.log('Environment check - Electron:', isElectron);
       
-      // Import Tesseract.js dynamically
-      console.log('Importing Tesseract.js...');
-      const Tesseract = await import('tesseract.js');
-      console.log('Tesseract.js imported successfully');
-      
-      // Create worker with better error handling
-      console.log('Creating Tesseract worker...');
-      const worker = await Tesseract.createWorker('eng', 1, {
-        logger: (m: any) => console.log('Tesseract logger:', m)
-      });
-      
-      console.log('Worker created successfully, configuring parameters...');
-      
-      // Configure OCR to recognize text and mathematical symbols
-      await worker.setParameters({
-        tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+-*/=()[]{}^√∫∑∏∞<>≤≥≠±÷×πθαβγδεφψωλμσρτΩΔΠΦΨΩ.,;:!? ',
-        tessedit_pageseg_mode: '6' // Uniform block of text
-      });
-      
-      console.log('Parameters set, performing OCR on image...');
-      
-      // Perform OCR on the image
-      const result = await worker.recognize(imageData);
-      const text = result.data.text;
-      
-      console.log('OCR completed, terminating worker...');
-      
-      // Terminate the worker to free up resources
-      await worker.terminate();
-      
-      const extractedText = text.trim();
-      console.log('OCR extracted text:', extractedText);
-      
-      if (!extractedText) {
-        return 'No text detected in image. Try positioning the content more clearly in the captured area.';
+      // Use CDN version for Electron to avoid require() issues
+      if (isElectron) {
+        return await this.extractTextWithCDN(imageData);
+      } else {
+        return await this.extractTextWithNPM(imageData);
       }
-      
-      return extractedText;
       
     } catch (error) {
       console.error('OCR error details:', error);
@@ -418,6 +386,105 @@ export class ScreenCapture {
       // Return a more informative error message
       return `OCR processing failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again or check your screen capture.`;
     }
+  }
+
+  // OCR using CDN version (for Electron)
+  private async extractTextWithCDN(imageData: string): Promise<string> {
+    console.log('Using CDN version of Tesseract.js for Electron...');
+    
+    // Load Tesseract.js from CDN
+    if (!(window as any).Tesseract) {
+      console.log('Loading Tesseract.js from CDN...');
+      await this.loadTesseractFromCDN();
+    }
+    
+    const Tesseract = (window as any).Tesseract;
+    console.log('Creating Tesseract worker...');
+    
+    const worker = await Tesseract.createWorker('eng');
+    
+    console.log('Worker created, configuring parameters...');
+    await worker.setParameters({
+      tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+-*/=()[]{}^√∫∑∏∞<>≤≥≠±÷×πθαβγδεφψωλμσρτΩΔΠΦΨΩ.,;:!? ',
+      tessedit_pageseg_mode: '6'
+    });
+    
+    console.log('Performing OCR on image...');
+    const result = await worker.recognize(imageData);
+    const text = result.data.text;
+    
+    console.log('OCR completed, terminating worker...');
+    await worker.terminate();
+    
+    const extractedText = text.trim();
+    console.log('OCR extracted text:', extractedText);
+    
+    if (!extractedText) {
+      return 'No text detected in image. Try positioning the content more clearly in the captured area.';
+    }
+    
+    return extractedText;
+  }
+
+  // OCR using NPM version (for web)
+  private async extractTextWithNPM(imageData: string): Promise<string> {
+    console.log('Using NPM version of Tesseract.js for web...');
+    
+    // Import Tesseract.js dynamically
+    console.log('Importing Tesseract.js...');
+    const Tesseract = await import('tesseract.js');
+    console.log('Tesseract.js imported successfully');
+    
+    // Create worker with better error handling
+    console.log('Creating Tesseract worker...');
+    const worker = await Tesseract.createWorker('eng', 1, {
+      logger: (m: any) => console.log('Tesseract logger:', m)
+    });
+    
+    console.log('Worker created successfully, configuring parameters...');
+    
+    // Configure OCR to recognize text and mathematical symbols
+    await worker.setParameters({
+      tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+-*/=()[]{}^√∫∑∏∞<>≤≥≠±÷×πθαβγδεφψωλμσρτΩΔΠΦΨΩ.,;:!? ',
+      tessedit_pageseg_mode: '6' // Uniform block of text
+    });
+    
+    console.log('Parameters set, performing OCR on image...');
+    
+    // Perform OCR on the image
+    const result = await worker.recognize(imageData);
+    const text = result.data.text;
+    
+    console.log('OCR completed, terminating worker...');
+    
+    // Terminate the worker to free up resources
+    await worker.terminate();
+    
+    const extractedText = text.trim();
+    console.log('OCR extracted text:', extractedText);
+    
+    if (!extractedText) {
+      return 'No text detected in image. Try positioning the content more clearly in the captured area.';
+    }
+    
+    return extractedText;
+  }
+
+  // Load Tesseract.js from CDN
+  private async loadTesseractFromCDN(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+      script.onload = () => {
+        console.log('Tesseract.js loaded from CDN');
+        resolve();
+      };
+      script.onerror = () => {
+        console.error('Failed to load Tesseract.js from CDN');
+        reject(new Error('Failed to load Tesseract.js from CDN'));
+      };
+      document.head.appendChild(script);
+    });
   }
 }
 
