@@ -40,7 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isVisible, onToggleVisibility 
       
       const screenCapture = getScreenCapture();
       await screenCapture.startContinuousCapture(
-        10000, // 10 second interval to reduce API calls
+        30000, // 30 second interval to reduce API calls significantly
         async (captureResult) => {
           try {
             setIsLoading(true);
@@ -73,7 +73,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isVisible, onToggleVisibility 
               // Check if enough time has passed since last analysis
               const now = Date.now();
               const timeSinceLastAnalysis = now - lastAnalysisTime;
-              const minIntervalMs = 5000; // 5 seconds minimum between analyses
+              const minIntervalMs = 15000; // 15 seconds minimum between analyses
               
               if (timeSinceLastAnalysis < minIntervalMs) {
                 const waitTime = Math.ceil((minIntervalMs - timeSinceLastAnalysis) / 1000);
@@ -111,6 +111,59 @@ export const Sidebar: React.FC<SidebarProps> = ({ isVisible, onToggleVisibility 
     const screenCapture = getScreenCapture();
     screenCapture.stopContinuousCapture();
     setIsCapturing(false);
+  };
+
+  const handleManualCapture = async () => {
+    if (!apiKey) {
+      setError('Please set your OpenAI API key first');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError('');
+      
+      const screenCapture = getScreenCapture();
+      const captureResult = await screenCapture.captureScreen();
+      
+      console.log('Manual capture result:', {
+        timestamp: captureResult.timestamp,
+        width: captureResult.width,
+        height: captureResult.height,
+        imageDataSize: captureResult.imageData.length
+      });
+      
+      // Extract text from image (OCR)
+      const extractedText = await screenCapture.extractText(captureResult.imageData);
+      
+      console.log('OCR extracted text:', extractedText);
+      
+      if (extractedText.trim()) {
+        // Check if enough time has passed since last analysis
+        const now = Date.now();
+        const timeSinceLastAnalysis = now - lastAnalysisTime;
+        const minIntervalMs = 5000; // 5 seconds minimum between analyses
+        
+        if (timeSinceLastAnalysis < minIntervalMs) {
+          const waitTime = Math.ceil((minIntervalMs - timeSinceLastAnalysis) / 1000);
+          setError(`Please wait ${waitTime} seconds before requesting another analysis.`);
+          return;
+        }
+        
+        // Send to OpenAI for analysis
+        const analysisResult = await openaiService.analyze(extractedText, mode);
+        setResult(analysisResult);
+        setLastAnalysisTime(now);
+        setError(''); // Clear any previous errors
+      } else {
+        setError('No text could be extracted from the captured image. Please check if screen capture is working correctly.');
+      }
+    } catch (error) {
+      console.error('Error with manual capture:', error);
+      setError(error instanceof Error ? error.message : 'Unknown error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleModeChange = (newMode: Mode) => {
@@ -248,7 +301,32 @@ export const Sidebar: React.FC<SidebarProps> = ({ isVisible, onToggleVisibility 
                   })
             }}
           >
-            {isCapturing ? 'Stop Capture' : 'Start Capture'}
+            {isCapturing ? 'Stop Auto Capture' : 'Start Auto Capture'}
+          </button>
+          
+          <button
+            onClick={handleManualCapture}
+            disabled={!apiKey || isLoading}
+            style={{
+              width: '100%',
+              padding: '8px 16px',
+              borderRadius: '4px',
+              fontWeight: '500',
+              border: 'none',
+              cursor: (apiKey && !isLoading) ? 'pointer' : 'not-allowed',
+              transition: 'all 0.2s',
+              ...(apiKey && !isLoading
+                ? {
+                    background: '#3b82f6',
+                    color: 'white'
+                  }
+                : {
+                    background: '#d1d5db',
+                    color: '#6b7280'
+                  })
+            }}
+          >
+            {isLoading ? 'Processing...' : 'Capture Now'}
           </button>
           
           {!apiKey && (

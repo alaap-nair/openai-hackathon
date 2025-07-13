@@ -7,7 +7,9 @@ export class OpenAIService {
   private apiKey: string;
   private baseUrl: string;
   private lastCallTime: number = 0;
-  private minIntervalMs: number = 2000; // Minimum 2 seconds between calls
+  private minIntervalMs: number = 5000; // Minimum 5 seconds between calls
+  private retryCount: number = 0;
+  private maxRetries: number = 3;
 
   constructor(apiKey: string = '', baseUrl: string = 'https://api.openai.com/v1') {
     this.apiKey = apiKey;
@@ -19,11 +21,13 @@ export class OpenAIService {
       throw new Error('OpenAI API key not set');
     }
 
-    // Rate limiting: ensure minimum time between calls
+    // Rate limiting: ensure minimum time between calls with exponential backoff
     const now = Date.now();
     const timeSinceLastCall = now - this.lastCallTime;
-    if (timeSinceLastCall < this.minIntervalMs) {
-      const waitTime = this.minIntervalMs - timeSinceLastCall;
+    const requiredInterval = this.minIntervalMs * Math.pow(2, this.retryCount);
+    
+    if (timeSinceLastCall < requiredInterval) {
+      const waitTime = requiredInterval - timeSinceLastCall;
       throw new Error(`Rate limit: Please wait ${Math.ceil(waitTime / 1000)} seconds before making another request`);
     }
 
@@ -46,7 +50,7 @@ export class OpenAIService {
           messages: [
             {
               role: 'system',
-              content: 'You are a helpful math tutor. Provide clear, concise explanations suitable for students. Format all mathematical expressions cleanly without special characters or delimiters. Use simple numbers (1., 2., etc.) for steps instead of markdown headers or special formatting.'
+              content: 'You are Observer, an expert math tutor. You analyze text extracted from screens and help students understand math problems.\n\nFocus ONLY on mathematical content. Ignore UI elements, menus, or non-math text.\n\nBased on the mode:\n- Explain: Provide step-by-step explanations with clear reasoning\n- Quiz: Generate practice questions or check answers if provided\n- Summarize: Give concise concept summaries\n\nAlways:\n- Be direct and concise\n- Format all mathematical expressions cleanly without special characters (no $$, \\, #, or [])\n- Use simple numbers (1., 2., etc.) for steps instead of markdown headers\n- Point out mistakes gently if you see them\n- If no math is detected, say "No math content found to analyze"\n\nFormat responses clearly and avoid mentioning OCR, screenshots, or that you are an AI.'
             },
             {
               role: 'user',
@@ -63,6 +67,7 @@ export class OpenAIService {
         
         // Handle rate limiting specifically
         if (response.status === 429) {
+          this.retryCount = Math.min(this.retryCount + 1, this.maxRetries);
           const retryAfter = response.headers.get('Retry-After');
           const waitTime = retryAfter ? parseInt(retryAfter) : 60;
           throw new Error(`Rate limited by OpenAI. Please wait ${waitTime} seconds before trying again.`);
@@ -71,12 +76,16 @@ export class OpenAIService {
         // Handle other API errors
         const errorMessage = errorData.error?.message || 'Unknown error';
         if (errorMessage.includes('rate limit') || errorMessage.includes('quota')) {
+          this.retryCount = Math.min(this.retryCount + 1, this.maxRetries);
           throw new Error('OpenAI rate limit exceeded. Please wait a few minutes before trying again.');
         }
         
         throw new Error(`OpenAI API error: ${response.status} - ${errorMessage}`);
       }
 
+      // Reset retry count on successful call
+      this.retryCount = 0;
+      
       const data = await response.json();
       return data.choices[0]?.message?.content || 'No response received';
     } catch (error) {

@@ -360,10 +360,10 @@ export class ScreenCapture {
             this.canvas.height
           );
 
-          // Convert to base64
+          // Convert to base64 with high quality for better OCR
           const imageData = this.canvas.toDataURL(
-            options.format || 'image/png',
-            options.quality || 0.8
+            'image/png', // Use PNG for better quality
+            1.0 // Maximum quality
           );
 
           const result: CaptureResult = {
@@ -585,11 +585,122 @@ export class ScreenCapture {
       .trim();
   }
 
+  private validateImageData(imageData: string): boolean {
+    try {
+      // Check if it's a valid data URL
+      if (!imageData.startsWith('data:image/')) {
+        console.warn('Invalid image data format - missing data URL prefix');
+        return false;
+      }
+
+      // Check if it has base64 content
+      const base64Part = imageData.split(',')[1];
+      if (!base64Part || base64Part.length < 100) {
+        console.warn('Invalid or too short base64 data');
+        return false;
+      }
+
+      // Try to decode base64 to validate
+      try {
+        atob(base64Part.substring(0, 100)); // Test decode first 100 chars
+        return true;
+      } catch (e) {
+        console.warn('Invalid base64 encoding');
+        return false;
+      }
+    } catch (error) {
+      console.warn('Error validating image data:', error);
+      return false;
+    }
+  }
+
+  private optimizeImageForOCR(imageData: string): string {
+    try {
+      // Create a temporary canvas to process the image
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      if (!tempCtx) {
+        console.warn('Failed to get canvas context for image optimization');
+        return imageData;
+      }
+
+      const img = new Image();
+      
+      return new Promise<string>((resolve) => {
+        img.onload = () => {
+          // Set optimal size for OCR (not too large, not too small)
+          const maxWidth = 1920;
+          const maxHeight = 1080;
+          
+          let { width, height } = img;
+          
+          // Scale down if too large
+          if (width > maxWidth || height > maxHeight) {
+            const scale = Math.min(maxWidth / width, maxHeight / height);
+            width *= scale;
+            height *= scale;
+          }
+          
+          tempCanvas.width = width;
+          tempCanvas.height = height;
+          
+          // Draw with better quality settings
+          tempCtx.imageSmoothingEnabled = true;
+          tempCtx.imageSmoothingQuality = 'high';
+          tempCtx.drawImage(img, 0, 0, width, height);
+          
+          // Convert back to data URL with high quality
+          const optimizedData = tempCanvas.toDataURL('image/png', 1.0);
+          resolve(optimizedData);
+        };
+        
+        img.onerror = () => {
+          console.warn('Failed to load image for optimization');
+          resolve(imageData);
+        };
+        
+        img.src = imageData;
+      }).catch(() => imageData);
+      
+    } catch (error) {
+      console.warn('Error optimizing image for OCR:', error);
+      return imageData;
+    }
+  }
+
+  private debugSaveImage(imageData: string, filename: string = 'debug-capture.png'): void {
+    if (this.isElectron && typeof window !== 'undefined') {
+      try {
+        // Create a download link for debugging
+        const link = document.createElement('a');
+        link.href = imageData;
+        link.download = filename;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        console.log(`Debug image saved as ${filename}`);
+      } catch (error) {
+        console.warn('Failed to save debug image:', error);
+      }
+    }
+  }
+
   async extractText(imageData: string): Promise<string> {
     try {
       console.log('Starting OCR process with OpenAI Vision API...');
       console.log('Image data length:', imageData.length);
       console.log('Image data prefix:', imageData.substring(0, 50));
+      
+      // Debug: Save the captured image for inspection (only in development)
+      if (this.isElectron && window.electronAPI?.process?.env?.NODE_ENV === 'development') {
+        this.debugSaveImage(imageData, `ocr-debug-${Date.now()}.png`);
+      }
+      
+      // Validate image data first
+      if (!this.validateImageData(imageData)) {
+        throw new Error('Invalid image data format. Please ensure screen capture is working correctly.');
+      }
       
       // Get API key from localStorage
       const apiKey = localStorage.getItem('openai_api_key');
@@ -597,16 +708,30 @@ export class ScreenCapture {
         throw new Error('OpenAI API key not found. Please set your API key in the sidebar.');
       }
       
-      // Ensure the image data is in the correct format for OpenAI Vision API
+      // Optimize image for better OCR results
       let processedImageData = imageData;
       
-      // If it's already a data URL, use it as is
-      if (!imageData.startsWith('data:')) {
-        processedImageData = `data:image/png;base64,${imageData}`;
+      // For Electron, ensure we have the correct format
+      if (this.isElectron) {
+        console.log('Processing image for Electron environment...');
+        
+        // Ensure proper data URL format
+        if (!imageData.startsWith('data:image/')) {
+          processedImageData = `data:image/png;base64,${imageData}`;
+        }
+        
+        // Try to optimize the image
+        try {
+          processedImageData = await this.optimizeImageForOCR(processedImageData) as string;
+          console.log('Image optimized for OCR');
+        } catch (error) {
+          console.warn('Failed to optimize image, using original:', error);
+        }
       }
       
       console.log('Making request to OpenAI Vision API...');
       console.log('Processed image data prefix:', processedImageData.substring(0, 50));
+      console.log('Final image data length:', processedImageData.length);
       
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -643,6 +768,12 @@ export class ScreenCapture {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error('OpenAI Vision API error:', errorData);
+        
+        // Handle specific error cases
+        if (response.status === 400 && errorData.error?.message?.includes('image')) {
+          throw new Error('Invalid image format. The image may be corrupted or in an unsupported format.');
+        }
+        
         throw new Error(`OpenAI Vision API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
       }
 
@@ -654,7 +785,7 @@ export class ScreenCapture {
       
       console.log('OCR extracted text:', cleanedText);
       
-      if (!cleanedText.trim() || cleanedText.includes('No readable text found')) {
+      if (!cleanedText.trim() || cleanedText.includes('No readable text found') || cleanedText.includes('unable to')) {
         return 'No text detected in image. Try positioning the content more clearly in the captured area.';
       }
       
