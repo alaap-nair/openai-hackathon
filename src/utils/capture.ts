@@ -122,11 +122,9 @@ export class ScreenCapture {
       });
     } catch (error) {
       console.error('Electron screen capture failed:', error);
-      console.error('Error details:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      });
+      console.error('Error details - name:', error.name);
+      console.error('Error details - message:', error.message);
+      console.error('Error details - stack:', error.stack);
       
       // Provide more helpful error messages for common issues
       if (error.name === 'NotAllowedError') {
@@ -238,23 +236,92 @@ export class ScreenCapture {
     onCapture: (result: CaptureResult) => void,
     options: CaptureOptions
   ): Promise<void> {
+    console.log('Starting continuous capture for Electron...');
+    
+    // Get the media stream once (requires user gesture)
+    console.log('Requesting screen capture permission...');
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+      throw new Error('Screen capture not supported in this environment');
+    }
+
+    this.mediaStream = await navigator.mediaDevices.getDisplayMedia({
+      video: {
+        width: { max: 1920 },
+        height: { max: 1080 }
+      },
+      audio: false
+    });
+
+    console.log('Screen capture permission granted, stream obtained');
+
+    // Create video element to capture frames from
+    this.video = document.createElement('video');
+    this.video.srcObject = this.mediaStream;
+    this.video.style.display = 'none';
+    document.body.appendChild(this.video);
+    
+    // Wait for video to load
+    await new Promise<void>((resolve, reject) => {
+      this.video!.onloadedmetadata = () => resolve();
+      this.video!.onerror = () => reject(new Error('Failed to load video'));
+    });
+
+    await this.video.play();
+
     this.isCapturing = true;
 
-    // Set up interval to capture frames
-    this.captureInterval = window.setInterval(async () => {
+    // Set up interval to capture frames from the existing stream
+    this.captureInterval = window.setInterval(() => {
       try {
-        const result = await this.captureScreenElectron(options);
+        if (!this.video || !this.mediaStream) return;
+
+        const { videoWidth, videoHeight } = this.video;
+        
+        // Set canvas size to match video or specified dimensions
+        this.canvas.width = options.width || videoWidth;
+        this.canvas.height = options.height || videoHeight;
+
+        // Draw current video frame to canvas
+        this.context.drawImage(
+          this.video,
+          options.x || 0,
+          options.y || 0,
+          options.width || videoWidth,
+          options.height || videoHeight,
+          0,
+          0,
+          this.canvas.width,
+          this.canvas.height
+        );
+
+        // Convert to base64
+        const imageData = this.canvas.toDataURL(
+          options.format || 'image/png',
+          options.quality || 0.8
+        );
+
+        const result: CaptureResult = {
+          imageData,
+          timestamp: Date.now(),
+          width: this.canvas.width,
+          height: this.canvas.height
+        };
+
         onCapture(result);
       } catch (error) {
         console.error('Continuous capture error:', error);
-        console.error('Continuous capture error details:', {
-          name: error.name,
-          message: error.message,
-          stack: error.stack
-        });
+        console.error('Continuous capture error - name:', error.name);
+        console.error('Continuous capture error - message:', error.message);
+        console.error('Continuous capture error - stack:', error.stack);
         // Don't stop on individual errors, just log them
       }
     }, intervalMs);
+
+    // Handle stream ending (user stops sharing)
+    this.mediaStream.getVideoTracks()[0].onended = () => {
+      console.log('Screen sharing stopped by user');
+      this.stopContinuousCapture();
+    };
   }
 
   private async startContinuousCaptureBrowser(
@@ -331,6 +398,9 @@ export class ScreenCapture {
         onCapture(result);
       } catch (error) {
         console.error('Continuous capture error:', error);
+        console.error('Continuous capture error - name:', error.name);
+        console.error('Continuous capture error - message:', error.message);
+        console.error('Continuous capture error - stack:', error.stack);
         // Don't stop on individual errors, just log them
       }
     }, intervalMs);
